@@ -134,14 +134,15 @@ def gerar_pdf():
             c.drawString(60, y, linha)
             y -= 20
 
+        # Efetivo
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-    texto_efetivo = str(ultimo["Efetivo"]).replace(": 01", ": 1").replace(": 02", ": 2").replace(": 03", ": 3")
-    efetivo = ast.literal_eval(texto_efetivo)
-except Exception as e:
-    st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
-    return None
+            texto_efetivo = str(ultimo["Efetivo"]).replace(": 01", ": 1").replace(": 02", ": 2").replace(": 03", ": 3")
+            efetivo = ast.literal_eval(texto_efetivo)
+        except Exception as e:
+            st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
+            return None
 
         for item in efetivo:
             linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
@@ -156,6 +157,7 @@ except Exception as e:
             c.drawString(50, y, f"Fiscalização: {str(ultimo['Fiscalização'])}")
             y -= 20
 
+        # Fotos
         if "Fotos" in ultimo and pd.notna(ultimo["Fotos"]):
             fotos = str(ultimo["Fotos"]).split(", ")
             for foto_path in fotos:
@@ -176,6 +178,7 @@ except Exception as e:
     except Exception as e:
         st.error(f"❌ Erro ao gerar PDF: {e}")
         return None
+
 
 # Botão para gerar PDF e baixar
 if st.button("📄 Gerar PDF do último registro"):
