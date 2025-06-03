@@ -137,21 +137,19 @@ def gerar_pdf():
         # Efetivo
         c.drawString(50, y, "Efetivo:")
         y -= 20
-        import json
-
-try:
-    texto_efetivo = str(ultimo["Efetivo"]).replace("'", '"')  # aspas simples para aspas duplas
-    efetivo = json.loads(texto_efetivo)
-except Exception as e:
-    st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
-    return None
-
+        try:
+            texto_efetivo = str(ultimo["Efetivo"]).replace("'", '"')  # garante formato JSON válido
+            efetivo = json.loads(texto_efetivo)
+        except Exception as e:
+            st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
+            return None
 
         for item in efetivo:
             linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
             c.drawString(60, y, linha)
             y -= 20
 
+        # Ocorrências e Assinaturas
         c.drawString(50, y, f"Ocorrências: {str(ultimo['Ocorrências'])}")
         y -= 20
         c.drawString(50, y, f"Responsável Empresa: {str(ultimo['Responsável Empresa'])}")
@@ -181,6 +179,7 @@ except Exception as e:
     except Exception as e:
         st.error(f"❌ Erro ao gerar PDF: {e}")
         return None
+
 
 
 # Botão para gerar PDF e baixar
