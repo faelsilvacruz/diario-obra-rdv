@@ -25,20 +25,16 @@ local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.text_input("Contrato")
 
-# Clima
-st.header("2. Condições Climáticas")
-clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
-
 # Máquinas e equipamentos
-st.header("3. Máquinas e Equipamentos")
+st.header("2. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
 # Serviços Executados
-st.header("4. Serviços Executados")
+st.header("3. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
 # Efetivo de Pessoal
-st.header("5. Efetivo de Pessoal")
+st.header("4. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
 
