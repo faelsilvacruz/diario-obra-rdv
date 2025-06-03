@@ -9,8 +9,9 @@ from PIL import Image
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
-# Lista de colaboradores fixos
-colaboradores_lista = ["Dheyvison", "Valter", "Marcelo", "Suzy", "Raphael", "João", "Pedro", "Lucas", "Marcio"]
+# Leitura da lista de colaboradores
+colab_df = pd.read_csv("colaboradores.csv")
+colaboradores_lista = colab_df["Nome"].tolist()
 
 # Título
 st.title("📋 Diário de Obra - RDV Engenharia")
@@ -52,7 +53,8 @@ efetivo_lista = []
 for i in range(qtd_colaboradores):
     with st.expander(f"👷 Colaborador {i+1}"):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
-        funcao = st.text_input(f"Função", key=f"funcao_{i}")
+        funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
+        funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
         ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
         sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
         ent2 = st.time_input("2ª Entrada", key=f"ent2_{i}")
