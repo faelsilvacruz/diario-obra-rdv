@@ -83,7 +83,7 @@ st.header("9. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
 # Botão de salvar
-if st.button("💾 Salvar Registro"):
+if st.button("🗄 Salvar Registro"):
     registro = {
         "Obra": obra,
         "Local": local,
@@ -122,7 +122,8 @@ if st.button("💾 Salvar Registro"):
 
     st.success("✅ Registro salvo com sucesso!")
 
-# Função para gerar PDF + botão de download
+# Função para gerar PDF + download
+
 def gerar_pdf():
     try:
         df = pd.read_csv("registros_diario_obra.csv")
@@ -162,20 +163,21 @@ def gerar_pdf():
                     img = Image.open(foto_path)
                     img.thumbnail((500, 500))
                     c.drawImage(ImageReader(img), 50, altura / 2 - 100)
-                except Exception as e:
+                except Exception:
                     c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
                     continue
 
         c.save()
         st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
-
-        # Botão de download
-        with open(nome_pdf, "rb") as f:
-            st.download_button("📥 Baixar PDF", f, file_name=Path(nome_pdf).name)
+        return nome_pdf
 
     except Exception as e:
         st.error(f"❌ Erro ao gerar PDF: {e}")
+        return None
 
-# Botão para gerar PDF
+# Botão para gerar PDF e disponibilizar para download
 if st.button("📄 Gerar PDF do último registro"):
-    gerar_pdf()
+    caminho_pdf = gerar_pdf()
+    if caminho_pdf:
+        with open(caminho_pdf, "rb") as f:
+            st.download_button("📥 Baixar PDF", f, file_name=Path(caminho_pdf).name)
