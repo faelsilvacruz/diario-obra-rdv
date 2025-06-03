@@ -8,6 +8,7 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 import ast
 import textwrap
+import re
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
@@ -73,7 +74,7 @@ if st.button("🗄 Salvar Registro"):
         "Local": local,
         "Data": data.strftime("%d/%m/%Y"),
         "Contrato": contrato,
-        "Clima": "",  # Campo Clima removido com Horários Gerais
+        "Clima": "",
         "Máquinas": maquinas,
         "Serviços": servicos,
         "Efetivo": str(efetivo_lista),
@@ -175,6 +176,7 @@ def gerar_pdf():
     except Exception as e:
         st.error(f"❌ Erro ao gerar PDF: {e}")
         return None
+
 # Botão para gerar PDF e baixar
 if st.button("📄 Gerar PDF do último registro"):
     caminho_pdf = gerar_pdf()
