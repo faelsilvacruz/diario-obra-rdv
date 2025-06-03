@@ -122,7 +122,7 @@ if st.button("💾 Salvar Registro"):
 
     st.success("✅ Registro salvo com sucesso!")
 
-# Função para gerar PDF
+# Função para gerar PDF + botão de download
 def gerar_pdf():
     try:
         df = pd.read_csv("registros_diario_obra.csv")
@@ -168,6 +168,11 @@ def gerar_pdf():
 
         c.save()
         st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
+
+        # Botão de download
+        with open(nome_pdf, "rb") as f:
+            st.download_button("📥 Baixar PDF", f, file_name=Path(nome_pdf).name)
+
     except Exception as e:
         st.error(f"❌ Erro ao gerar PDF: {e}")
 
