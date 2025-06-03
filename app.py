@@ -136,12 +136,12 @@ def gerar_pdf():
         c.drawString(50, y, "Efetivo:")
         y -= 20
         import re
-        try:
-            texto_efetivo = re.sub(r'(?<=: )0+(?=[1-9])', '', str(ultimo["Efetivo"]))
-            efetivo = ast.literal_eval(texto_efetivo)
-        except Exception as e:
-            st.error(f"Erro ao processar o campo Efetivo: {e}")
-            return None
+       try:
+    texto_efetivo = re.sub(r'(?<=: )0+(?=[1-9])', '', str(ultimo["Efetivo"]))
+    efetivo = ast.literal_eval(texto_efetivo)
+except Exception as e:
+    st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
+    return None
         for item in efetivo:
             linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
             c.drawString(60, y, linha)
