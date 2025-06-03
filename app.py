@@ -9,6 +9,8 @@ from PIL import Image
 import ast
 import textwrap
 import re
+import json
+
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
