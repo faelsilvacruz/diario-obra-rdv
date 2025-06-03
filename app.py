@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from PIL import Image
+import ast
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
@@ -143,9 +144,29 @@ def gerar_pdf():
         for campo in [
             "Obra", "Local", "Data", "Contrato",
             "1ª Entrada", "1ª Saída", "2ª Entrada", "2ª Saída",
-            "Clima", "Máquinas", "Serviços", "Efetivo",
-            "Ocorrências", "Responsável Empresa", "Fiscalização"
+            "Clima", "Máquinas", "Serviços"
         ]:
+            texto = f"{campo}: {str(ultimo[campo])}"
+            for linha in texto.split('\n'):
+                c.drawString(50, y, linha)
+                y -= 20
+                if y < 100:
+                    c.showPage()
+                    y = altura - 50
+
+        # Efetivo formatado como tabela
+        c.drawString(50, y, "Efetivo:")
+        y -= 20
+        efetivo = ast.literal_eval(ultimo["Efetivo"])
+        for item in efetivo:
+            linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
+            c.drawString(60, y, linha)
+            y -= 20
+            if y < 100:
+                c.showPage()
+                y = altura - 50
+
+        for campo in ["Ocorrências", "Responsável Empresa", "Fiscalização"]:
             texto = f"{campo}: {str(ultimo[campo])}"
             for linha in texto.split('\n'):
                 c.drawString(50, y, linha)
