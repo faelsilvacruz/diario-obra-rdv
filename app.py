@@ -135,8 +135,10 @@ def gerar_pdf():
 
         c.drawString(50, y, "Efetivo:")
         y -= 20
+        import re
         try:
-            efetivo = ast.literal_eval(ultimo["Efetivo"])
+            texto_efetivo = re.sub(r'(?<=: )0+(?=[1-9])', '', str(ultimo["Efetivo"]))
+            efetivo = ast.literal_eval(texto_efetivo)
         except Exception as e:
             st.error(f"Erro ao processar o campo Efetivo: {e}")
             return None
