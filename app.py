@@ -129,7 +129,7 @@ def gerar_pdf():
         # Serviços com quebra de linha
         c.drawString(50, y, "Serviços:")
         y -= 20
-        for linha in textwrap.wrap(str(ultimo["Serviços"]), width=100):
+        for linha in textwrap.wrap(str(ultimo["Serviços"]), width=90):
             c.drawString(60, y, linha)
             y -= 20
 
@@ -145,7 +145,7 @@ def gerar_pdf():
         y -= 20
         c.drawString(50, y, f"Responsável Empresa: {str(ultimo['Responsável Empresa'])}")
         y -= 20
-        if pd.notna(ultimo["Fiscalização"]) and str(ultimo["Fiscalização"]).strip():
+        if "Fiscalização" in ultimo and str(ultimo["Fiscalização"]).strip() not in ["", "nan"]:
             c.drawString(50, y, f"Fiscalização: {str(ultimo['Fiscalização'])}")
             y -= 20
 
