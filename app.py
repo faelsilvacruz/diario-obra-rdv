@@ -7,35 +7,28 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from PIL import Image
-import ast
 import textwrap
 import json
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
-# Leitura da lista de colaboradores
 colab_df = pd.read_csv("colaboradores.csv")
 colaboradores_lista = colab_df["Nome"].tolist()
 
-# Título
 st.title("📋 Diário de Obra - RDV Engenharia")
 
-# Informações da Obra
 st.header("1. Informações da Obra")
 obra = st.text_input("Obra")
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.text_input("Contrato")
 
-# Máquinas e equipamentos
 st.header("2. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
-# Serviços Executados
 st.header("3. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
-## Efetivo de Pessoal
 st.header("4. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
@@ -59,21 +52,16 @@ for i in range(qtd_colaboradores):
             "2ª Saída": sai2.strftime("%H:%M")
         })
 
-
-# Outras ocorrências
 st.header("5. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
-# Assinaturas
 st.header("6. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
-# Upload de fotos
 st.header("7. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
-# Botão de salvar
 if st.button("🗄 Salvar Registro"):
     registro = {
         "Obra": obra,
@@ -83,7 +71,7 @@ if st.button("🗄 Salvar Registro"):
         "Clima": "",
         "Máquinas": maquinas,
         "Serviços": servicos,
-        "Efetivo": str(efetivo_lista),
+        "Efetivo": json.dumps(efetivo_lista),
         "Ocorrências": ocorrencias,
         "Responsável Empresa": nome_empresa,
         "Fiscalização": nome_fiscal if nome_fiscal else ""
@@ -140,13 +128,9 @@ def gerar_pdf():
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-            texto_efetivo = str(ultimo.get("Efetivo", "")).strip()
-            if texto_efetivo == "" or texto_efetivo.lower() == "nan":
-                raise ValueError("Campo Efetivo está vazio ou inválido.")
-            texto_efetivo = texto_efetivo.replace("'", '"')
-            efetivo = json.loads(texto_efetivo)
+            efetivo = json.loads(ultimo["Efetivo"])
             for item in efetivo:
-                linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
+                linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
                 c.drawString(60, y, linha)
                 y -= 20
         except Exception as e:
