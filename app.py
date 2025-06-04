@@ -135,18 +135,18 @@ def gerar_pdf():
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-    texto_efetivo = str(ultimo.get("Efetivo", "")).strip()
-    if texto_efetivo == "" or texto_efetivo.lower() == "nan":
-        raise ValueError("Campo Efetivo está vazio ou inválido.")
-    texto_efetivo = texto_efetivo.replace("'", '"')
-    efetivo = json.loads(texto_efetivo)
-except Exception as e:
-    st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
-    return None
-        for item in efetivo:
-            linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
-            c.drawString(60, y, linha)
-            y -= 20
+            texto_efetivo = str(ultimo.get("Efetivo", "")).strip()
+            if texto_efetivo == "" or texto_efetivo.lower() == "nan":
+                raise ValueError("Campo Efetivo está vazio ou inválido.")
+            texto_efetivo = texto_efetivo.replace("'", '"')
+            efetivo = json.loads(texto_efetivo)
+            for item in efetivo:
+                linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
+                c.drawString(60, y, linha)
+                y -= 20
+        except Exception as e:
+            st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
+            return None
 
         c.drawString(50, y, f"Ocorrências: {str(ultimo['Ocorrências'])}")
         y -= 20
