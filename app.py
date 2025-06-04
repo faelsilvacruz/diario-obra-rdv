@@ -27,25 +27,16 @@ local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.text_input("Contrato")
 
-st.header("2. Horários Gerais")
-col1, col2 = st.columns(2)
-with col1:
-    entrada_1 = st.time_input("1ª Entrada")
-    entrada_2 = st.time_input("2ª Entrada")
-with col2:
-    saida_1 = st.time_input("1ª Saída")
-    saida_2 = st.time_input("2ª Saída")
-
-st.header("3. Condições Climáticas")
+st.header("2. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
-st.header("4. Máquinas e Equipamentos")
+st.header("3. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
-st.header("5. Serviços Executados")
+st.header("4. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
-st.header("6. Efetivo de Pessoal")
+st.header("5. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
 
@@ -68,14 +59,14 @@ for i in range(qtd_colaboradores):
             "2ª Saída": sai2.strftime("%H:%M")
         })
 
-st.header("7. Outras Ocorrências")
+st.header("6. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
-st.header("8. Assinaturas")
+st.header("7. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
-st.header("9. Fotos do Dia")
+st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
 if st.button("💾 Salvar Registro"):
@@ -84,10 +75,6 @@ if st.button("💾 Salvar Registro"):
         "Local": local,
         "Data": data.strftime("%d/%m/%Y"),
         "Contrato": contrato,
-        "1ª Entrada": entrada_1.strftime("%H:%M"),
-        "1ª Saída": saida_1.strftime("%H:%M"),
-        "2ª Entrada": entrada_2.strftime("%H:%M"),
-        "2ª Saída": saida_2.strftime("%H:%M"),
         "Clima": clima,
         "Máquinas": maquinas,
         "Serviços": servicos,
