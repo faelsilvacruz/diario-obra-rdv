@@ -1,44 +1,49 @@
-
 import streamlit as st
 import pandas as pd
-import json
 from datetime import datetime
 from pathlib import Path
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from PIL import Image
-import textwrap
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
-# Leitura de dados externos
+# Leitura da lista de colaboradores
 colab_df = pd.read_csv("colaboradores.csv")
 colaboradores_lista = colab_df["Nome"].tolist()
 
+# Leitura da lista de obras
 obras_df = pd.read_csv("obras.csv")
-lista_obras = obras_df["Nome"].tolist()
+obras_lista = [""] + obras_df["Nome"].dropna().tolist()
 
+# Leitura da lista de contratos
 contratos_df = pd.read_csv("contratos.csv")
-lista_contratos = contratos_df["Nome"].tolist()
+contratos_lista = [""] + contratos_df["Nome"].dropna().tolist()
 
+# Título
 st.title("📋 Diário de Obra - RDV Engenharia")
 
+# Informações da Obra
 st.header("1. Informações da Obra")
-obra = st.selectbox("Obra", lista_obras)
+obra = st.selectbox("Obra", obras_lista)
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
-contrato = st.selectbox("Contrato", lista_contratos)
+contrato = st.selectbox("Contrato", contratos_lista)
 
+# Condições Climáticas
 st.header("2. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
+# Máquinas e equipamentos
 st.header("3. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
+# Serviços Executados
 st.header("4. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
+# Efetivo de Pessoal
 st.header("5. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
@@ -46,7 +51,7 @@ efetivo_lista = []
 for i in range(qtd_colaboradores):
     with st.expander(f"👷 Colaborador {i+1}"):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
-        funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
+        funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0] if nome else ""
         funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
         ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
         sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
@@ -62,17 +67,22 @@ for i in range(qtd_colaboradores):
             "2ª Saída": sai2.strftime("%H:%M")
         })
 
+# Outras ocorrências
 st.header("6. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
+# Assinaturas
 st.header("7. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
-st.header("8. Fotos do Dia")
+# Upload de fotos
+tf = "8. Fotos do Dia"
+st.header(tf)
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
-if st.button("💾 Salvar Registro"):
+# Botão de salvar
+if st.button("📂 Salvar Registro"):
     registro = {
         "Obra": obra,
         "Local": local,
@@ -81,10 +91,10 @@ if st.button("💾 Salvar Registro"):
         "Clima": clima,
         "Máquinas": maquinas,
         "Serviços": servicos,
-        "Efetivo": json.dumps(efetivo_lista),
+        "Efetivo": str(efetivo_lista),
         "Ocorrências": ocorrencias,
         "Responsável Empresa": nome_empresa,
-        "Fiscalização": nome_fiscal.strip() if nome_fiscal else ""
+        "Fiscalização": nome_fiscal
     }
 
     fotos_dir = Path("fotos")
