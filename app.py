@@ -35,7 +35,7 @@ maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 st.header("3. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
-# Efetivo de Pessoal
+## Efetivo de Pessoal
 st.header("4. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
@@ -45,15 +45,20 @@ for i in range(qtd_colaboradores):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
         funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
         funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
-        ent1 = st.time_input("Entrada", key=f"ent1_{i}")
-        sai1 = st.time_input("Saída", key=f"sai1_{i}")
+        ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
+        sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
+        ent2 = st.time_input("2ª Entrada", key=f"ent2_{i}")
+        sai2 = st.time_input("2ª Saída", key=f"sai2_{i}")
 
         efetivo_lista.append({
             "Nome": nome,
             "Função": funcao,
-            "Entrada": ent1.strftime("%H:%M"),
-            "Saída": sai1.strftime("%H:%M")
+            "1ª Entrada": ent1.strftime("%H:%M"),
+            "1ª Saída": sai1.strftime("%H:%M"),
+            "2ª Entrada": ent2.strftime("%H:%M"),
+            "2ª Saída": sai2.strftime("%H:%M")
         })
+
 
 # Outras ocorrências
 st.header("5. Outras Ocorrências")
