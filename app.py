@@ -9,53 +9,80 @@ from PIL import Image
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
+# Leitura da lista de colaboradores
+colab_df = pd.read_csv("colaboradores.csv")
+colaboradores_lista = colab_df["Nome"].tolist()
+
 # Título
 st.title("📋 Diário de Obra - RDV Engenharia")
 
-# Seção: Identificação da obra
-st.header("Informações da Obra")
+# Informações da Obra
+st.header("1. Informações da Obra")
 obra = st.text_input("Obra")
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.text_input("Contrato")
 
-# Seção: Horários
-st.header("Horários de Trabalho")
-entrada_1 = st.time_input("1ª Entrada")
-saida_1 = st.time_input("1ª Saída")
-entrada_2 = st.time_input("2ª Entrada")
-saida_2 = st.time_input("2ª Saída")
+# Horários gerais
+st.header("2. Horários Gerais")
+col1, col2 = st.columns(2)
+with col1:
+    entrada_1 = st.time_input("1ª Entrada")
+    entrada_2 = st.time_input("2ª Entrada")
+with col2:
+    saida_1 = st.time_input("1ª Saída")
+    saida_2 = st.time_input("2ª Saída")
 
-# Seção: Clima
-st.header("Condições Climáticas")
+# Clima
+st.header("3. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
-# Seção: Máquinas e Equipamentos
-st.header("Máquinas e Equipamentos")
+# Máquinas e equipamentos
+st.header("4. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
-# Seção: Serviços Executados
-st.header("Serviços Executados")
+# Serviços Executados
+st.header("5. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
-# Seção: Efetivo
-st.header("Efetivo de Pessoal")
-efetivo = st.text_area("Informe nomes e funções dos colaboradores")
+# Efetivo de Pessoal
+st.header("6. Efetivo de Pessoal")
+qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
+efetivo_lista = []
 
-# Seção: Outras Ocorrências
-st.header("Outras Ocorrências")
+for i in range(qtd_colaboradores):
+    with st.expander(f"👷 Colaborador {i+1}"):
+        nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
+        funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
+        funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
+        ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
+        sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
+        ent2 = st.time_input("2ª Entrada", key=f"ent2_{i}")
+        sai2 = st.time_input("2ª Saída", key=f"sai2_{i}")
+
+        efetivo_lista.append({
+            "Nome": nome,
+            "Função": funcao,
+            "1ª Entrada": ent1.strftime("%H:%M"),
+            "1ª Saída": sai1.strftime("%H:%M"),
+            "2ª Entrada": ent2.strftime("%H:%M"),
+            "2ª Saída": sai2.strftime("%H:%M")
+        })
+
+# Outras ocorrências
+st.header("7. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
-# Seção: Assinaturas
-st.header("Assinaturas")
+# Assinaturas
+st.header("8. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
-# Seção: Upload de Fotos
-st.header("Fotos do Dia")
+# Upload de fotos
+st.header("9. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
-# Botão para salvar registro
+# Botão de salvar
 if st.button("💾 Salvar Registro"):
     registro = {
         "Obra": obra,
@@ -69,17 +96,15 @@ if st.button("💾 Salvar Registro"):
         "Clima": clima,
         "Máquinas": maquinas,
         "Serviços": servicos,
-        "Efetivo": efetivo,
+        "Efetivo": str(efetivo_lista),
         "Ocorrências": ocorrencias,
         "Responsável Empresa": nome_empresa,
         "Fiscalização": nome_fiscal
     }
 
-    # Criar pasta de fotos
     fotos_dir = Path("fotos")
     fotos_dir.mkdir(exist_ok=True)
 
-    # Salvar fotos
     nomes_arquivos = []
     if fotos:
         for i, foto in enumerate(fotos):
@@ -92,7 +117,6 @@ if st.button("💾 Salvar Registro"):
     else:
         registro["Fotos"] = ""
 
-    # Salvar no CSV
     df = pd.DataFrame([registro])
     df.to_csv("registros_diario_obra.csv", mode='a', header=not Path("registros_diario_obra.csv").exists(), index=False)
 
@@ -129,7 +153,6 @@ def gerar_pdf():
                     c.showPage()
                     y = altura - 50
 
-        # Inserir imagens
         if "Fotos" in ultimo and pd.notna(ultimo["Fotos"]):
             fotos = str(ultimo["Fotos"]).split(", ")
             for foto_path in fotos:
@@ -151,4 +174,3 @@ def gerar_pdf():
 # Botão para gerar PDF
 if st.button("📄 Gerar PDF do último registro"):
     gerar_pdf()
-
