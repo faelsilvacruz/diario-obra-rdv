@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -8,9 +9,7 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 import ast
 import textwrap
-import re
 import json
-
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
@@ -105,8 +104,6 @@ if st.button("🗄 Salvar Registro"):
 
     st.success("✅ Registro salvo com sucesso!")
 
-# Geração de PDF
-
 def gerar_pdf():
     try:
         df = pd.read_csv("registros_diario_obra.csv")
@@ -129,18 +126,19 @@ def gerar_pdf():
             c.drawString(50, y, texto)
             y -= 20
 
-        # Serviços com quebra de linha
         c.drawString(50, y, "Serviços:")
         y -= 20
         for linha in textwrap.wrap(str(ultimo["Serviços"]), width=90):
             c.drawString(60, y, linha)
             y -= 20
 
-        # Efetivo
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-            texto_efetivo = str(ultimo["Efetivo"]).replace("'", '"')  # garante formato JSON válido
+            texto_efetivo = str(ultimo["Efetivo"]).strip()
+            if not texto_efetivo:
+                raise ValueError("Campo Efetivo está vazio.")
+            texto_efetivo = texto_efetivo.replace("'", '"')
             efetivo = json.loads(texto_efetivo)
         except Exception as e:
             st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
@@ -151,7 +149,6 @@ def gerar_pdf():
             c.drawString(60, y, linha)
             y -= 20
 
-        # Ocorrências e Assinaturas
         c.drawString(50, y, f"Ocorrências: {str(ultimo['Ocorrências'])}")
         y -= 20
         c.drawString(50, y, f"Responsável Empresa: {str(ultimo['Responsável Empresa'])}")
@@ -160,7 +157,6 @@ def gerar_pdf():
             c.drawString(50, y, f"Fiscalização: {str(ultimo['Fiscalização'])}")
             y -= 20
 
-        # Fotos
         if "Fotos" in ultimo and pd.notna(ultimo["Fotos"]):
             fotos = str(ultimo["Fotos"]).split(", ")
             for foto_path in fotos:
@@ -182,9 +178,6 @@ def gerar_pdf():
         st.error(f"❌ Erro ao gerar PDF: {e}")
         return None
 
-
-
-# Botão para gerar PDF e baixar
 if st.button("📄 Gerar PDF do último registro"):
     caminho_pdf = gerar_pdf()
     if caminho_pdf:
