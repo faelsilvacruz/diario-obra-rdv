@@ -19,13 +19,16 @@ colaboradores_lista = colab_df["Nome"].tolist()
 obras_df = pd.read_csv("obras.csv")
 lista_obras = obras_df["Nome"].tolist()
 
+contratos_df = pd.read_csv("contratos.csv")
+lista_contratos = contratos_df["Nome"].tolist()
+
 st.title("📋 Diário de Obra - RDV Engenharia")
 
 st.header("1. Informações da Obra")
 obra = st.selectbox("Obra", lista_obras)
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
-contrato = st.text_input("Contrato")
+contrato = st.selectbox("Contrato", lista_contratos)
 
 st.header("2. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
