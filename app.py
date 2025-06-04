@@ -135,9 +135,9 @@ def gerar_pdf():
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-            texto_efetivo = str(ultimo["Efetivo"]).strip()
-            if not texto_efetivo:
-                raise ValueError("Campo Efetivo está vazio.")
+            texto_efetivo = str(ultimo.get("Efetivo", "")).strip()
+if texto_efetivo == "" or texto_efetivo.lower() == "nan":
+    raise ValueError("Campo Efetivo está vazio ou inválido.")
             texto_efetivo = texto_efetivo.replace("'", '"')
             efetivo = json.loads(texto_efetivo)
         except Exception as e:
