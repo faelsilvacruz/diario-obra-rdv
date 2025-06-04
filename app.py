@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from PIL import Image
 import ast
+import textwrap
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
@@ -16,9 +17,9 @@ colaboradores_lista = colab_df["Nome"].tolist()
 
 # Leitura da lista de obras e contratos
 obras_df = pd.read_csv("obras.csv")
-obras_lista = [""].__add__(obras_df["Nome"].tolist())
+obras_lista = [""] + obras_df["Nome"].dropna().tolist()
 contratos_df = pd.read_csv("contratos.csv")
-contratos_lista = [""].__add__(contratos_df["Nome"].tolist())
+contratos_lista = [""] + contratos_df["Nome"].dropna().tolist()
 
 # Título
 st.title("📋 Diário de Obra - RDV Engenharia")
@@ -79,12 +80,82 @@ nome_fiscal = st.text_input("Nome da fiscalização")
 st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
-# Botão de salvar
-if st.button("💾 Salvar Registro"):
+# Função para gerar PDF
+def gerar_pdf():
+    try:
+        df = pd.read_csv("registros_diario_obra.csv")
+        ultimo = df.iloc[-1]
+
+        Path("relatorios").mkdir(exist_ok=True)
+        nome_pdf = f"relatorios/{str(ultimo['Obra']).replace(' ', '_')}_{str(ultimo['Data']).replace('/', '-')}.pdf"
+        c = canvas.Canvas(nome_pdf, pagesize=A4)
+        largura, altura = A4
+        y = altura - 50
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, y, "● Diário de Obra - RDV Engenharia")
+        y -= 30
+        c.setFont("Helvetica", 12)
+
+        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas"]
+        for campo in campos:
+            texto = f"{campo}: {str(ultimo[campo])}"
+            c.drawString(50, y, texto)
+            y -= 20
+
+        c.drawString(50, y, "Serviços:")
+        y -= 20
+        for linha in textwrap.wrap(str(ultimo["Serviços"]), width=100):
+            c.drawString(60, y, linha)
+            y -= 20
+
+        c.drawString(50, y, "Efetivo:")
+        y -= 20
+        try:
+            texto_efetivo = str(ultimo.get("Efetivo", "")).strip()
+            if texto_efetivo == "" or texto_efetivo.lower() == "nan":
+                raise ValueError("Efetivo vazio ou nulo")
+            efetivo = ast.literal_eval(texto_efetivo)
+            for item in efetivo:
+                linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
+                c.drawString(60, y, linha)
+                y -= 20
+        except Exception as e:
+            st.warning(f"Registro ignorado por erro no campo Efetivo: {e}")
+
+        c.drawString(50, y, f"Ocorrências: {str(ultimo['Ocorrências'])}")
+        y -= 20
+        c.drawString(50, y, f"Responsável Empresa: {str(ultimo['Responsável Empresa'])}")
+        y -= 20
+        if pd.notna(ultimo["Fiscalização"]) and str(ultimo["Fiscalização"]).strip():
+            c.drawString(50, y, f"Fiscalização: {str(ultimo['Fiscalização'])}")
+            y -= 20
+
+        if "Fotos" in ultimo and pd.notna(ultimo["Fotos"]):
+            fotos = str(ultimo["Fotos"]).split(", ")
+            for foto_path in fotos:
+                try:
+                    c.showPage()
+                    c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
+                    img = Image.open(foto_path)
+                    img.thumbnail((500, 500))
+                    c.drawImage(ImageReader(img), 50, altura / 2 - 100)
+                except Exception:
+                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
+                    continue
+
+        c.save()
+        st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
+    except Exception as e:
+        st.error(f"❌ Erro ao gerar PDF: {e}")
+
+# Botão de salvar e gerar PDF
+data_formatada = data.strftime("%d/%m/%Y")
+if st.button("📄 Salvar Registro"):
     registro = {
         "Obra": obra,
         "Local": local,
-        "Data": data.strftime("%d/%m/%Y"),
+        "Data": data_formatada,
         "Contrato": contrato,
         "Clima": clima,
         "Máquinas": maquinas,
@@ -92,7 +163,7 @@ if st.button("💾 Salvar Registro"):
         "Efetivo": str(efetivo_lista),
         "Ocorrências": ocorrencias,
         "Responsável Empresa": nome_empresa,
-        "Fiscalização": nome_fiscal
+        "Fiscalização": nome_fiscal if nome_fiscal else ""
     }
 
     fotos_dir = Path("fotos")
@@ -114,62 +185,4 @@ if st.button("💾 Salvar Registro"):
     df.to_csv("registros_diario_obra.csv", mode='a', header=not Path("registros_diario_obra.csv").exists(), index=False)
 
     st.success("✅ Registro salvo com sucesso!")
-
-    # Gerar PDF automaticamente
-    try:
-        Path("relatorios").mkdir(exist_ok=True)
-        nome_pdf = f"relatorios/{str(registro['Obra']).replace(' ', '_')}_{registro['Data'].replace('/', '-')}.pdf"
-        c = canvas.Canvas(nome_pdf, pagesize=A4)
-        largura, altura = A4
-        y = altura - 50
-
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, y, "📋 Diário de Obra - RDV Engenharia")
-        y -= 30
-        c.setFont("Helvetica", 12)
-
-        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas"]
-        for campo in campos:
-            texto = f"{campo}: {registro[campo]}"
-            c.drawString(50, y, texto)
-            y -= 20
-
-        c.drawString(50, y, "Serviços:")
-        y -= 20
-        for linha in registro["Serviços"].split("\n"):
-            c.drawString(60, y, linha)
-            y -= 20
-
-        c.drawString(50, y, "Efetivo:")
-        y -= 20
-        efetivo = ast.literal_eval(registro["Efetivo"])
-        for item in efetivo:
-            linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
-            c.drawString(60, y, linha)
-            y -= 20
-
-        c.drawString(50, y, f"Ocorrências: {registro['Ocorrências']}")
-        y -= 20
-        c.drawString(50, y, f"Responsável Empresa: {registro['Responsável Empresa']}")
-        y -= 20
-        if registro['Fiscalização'].strip():
-            c.drawString(50, y, f"Fiscalização: {registro['Fiscalização']}")
-            y -= 20
-
-        if registro["Fotos"]:
-            fotos = registro["Fotos"].split(", ")
-            for foto_path in fotos:
-                try:
-                    c.showPage()
-                    c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
-                    img = Image.open(foto_path)
-                    img.thumbnail((500, 500))
-                    c.drawImage(ImageReader(img), 50, altura / 2 - 100)
-                except Exception:
-                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
-                    continue
-
-        c.save()
-        st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
-    except Exception as e:
-        st.error(f"❌ Erro ao gerar PDF: {e}")
+    gerar_pdf()
