@@ -8,7 +8,6 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 import ast
 import os
-import io
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
@@ -54,18 +53,14 @@ for i in range(qtd_colaboradores):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
         funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
         funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
-        ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
-        sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
-        ent2 = st.time_input("2ª Entrada", key=f"ent2_{i}")
-        sai2 = st.time_input("2ª Saída", key=f"sai2_{i}")
+        ent1 = st.time_input("1ª Entrada", value=None, key=f"ent1_{i}")
+        sai1 = st.time_input("1ª Saída", value=None, key=f"sai1_{i}")
 
         efetivo_lista.append({
             "Nome": nome,
             "Função": funcao,
-            "1ª Entrada": ent1.strftime("%H:%M"),
-            "1ª Saída": sai1.strftime("%H:%M"),
-            "2ª Entrada": ent2.strftime("%H:%M"),
-            "2ª Saída": sai2.strftime("%H:%M")
+            "1ª Entrada": ent1.strftime("%H:%M") if ent1 else "",
+            "1ª Saída": sai1.strftime("%H:%M") if sai1 else ""
         })
 
 # Outras ocorrências
@@ -80,6 +75,61 @@ nome_fiscal = st.text_input("Nome da fiscalização")
 # Upload de fotos
 st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
+
+# Função para gerar PDF
+def gerar_pdf(registro):
+    try:
+        Path("relatorios").mkdir(exist_ok=True)
+        nome_pdf = f"relatorios/{registro['Obra'].replace(' ', '_')}__{registro['Data'].replace('/', '-')}.pdf"
+        c = canvas.Canvas(nome_pdf, pagesize=A4)
+        largura, altura = A4
+        y = altura - 50
+
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(50, y, "📋 Diário de Obra - RDV Engenharia")
+        y -= 30
+        c.setFont("Helvetica", 12)
+
+        campos_gerais = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
+        for campo in campos_gerais:
+            c.drawString(50, y, f"{campo}: {registro[campo]}")
+            y -= 20
+
+        c.drawString(50, y, "Efetivo:")
+        y -= 20
+        for item in ast.literal_eval(registro["Efetivo"]):
+            linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']}"
+            c.drawString(60, y, linha)
+            y -= 20
+
+        c.drawString(50, y, f"Ocorrências: {registro['Ocorrências']}")
+        y -= 20
+        c.drawString(50, y, f"Responsável Empresa: {registro['Responsável Empresa']}")
+        y -= 20
+        if pd.notna(registro['Fiscalização']) and str(registro['Fiscalização']).strip():
+            c.drawString(50, y, f"Fiscalização: {registro['Fiscalização']}")
+            y -= 20
+
+        if registro.get("Fotos"):
+            fotos = str(registro["Fotos"]).split(", ")
+            for foto_path in fotos:
+                try:
+                    c.showPage()
+                    c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
+                    img = Image.open(foto_path)
+                    img.thumbnail((500, 500))
+                    c.drawImage(ImageReader(img), 50, altura / 2 - 100)
+                except Exception:
+                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
+                    continue
+
+        c.save()
+        st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
+        with open(nome_pdf, "rb") as f:
+            st.download_button("📥 Baixar PDF", f, file_name=Path(nome_pdf).name)
+
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
 
 # Botão de salvar
 if st.button("💾 Salvar Registro"):
@@ -116,55 +166,4 @@ if st.button("💾 Salvar Registro"):
     df.to_csv("registros_diario_obra.csv", mode='a', header=not Path("registros_diario_obra.csv").exists(), index=False)
 
     st.success("✅ Registro salvo com sucesso!")
-
-    # Gerar PDF em memória
-    try:
-        buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=A4)
-        largura, altura = A4
-        y = altura - 50
-
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, y, "📋 Diário de Obra - RDV Engenharia")
-        y -= 30
-        c.setFont("Helvetica", 12)
-
-        campos_gerais = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
-        for campo in campos_gerais:
-            c.drawString(50, y, f"{campo}: {registro[campo]}")
-            y -= 20
-
-        c.drawString(50, y, "Efetivo:")
-        y -= 20
-        for item in ast.literal_eval(registro["Efetivo"]):
-            linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
-            c.drawString(60, y, linha)
-            y -= 20
-
-        c.drawString(50, y, f"Ocorrências: {registro['Ocorrências']}")
-        y -= 20
-        c.drawString(50, y, f"Responsável Empresa: {registro['Responsável Empresa']}")
-        y -= 20
-        if pd.notna(registro['Fiscalização']) and str(registro['Fiscalização']).strip():
-            c.drawString(50, y, f"Fiscalização: {registro['Fiscalização']}")
-            y -= 20
-
-        if registro.get("Fotos"):
-            fotos = str(registro["Fotos"]).split(", ")
-            for foto_path in fotos:
-                try:
-                    c.showPage()
-                    c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
-                    img = Image.open(foto_path)
-                    img.thumbnail((500, 500))
-                    c.drawImage(ImageReader(img), 50, altura / 2 - 100)
-                except Exception:
-                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
-                    continue
-
-        c.save()
-        buffer.seek(0)
-        nome_pdf = f"{registro['Obra'].replace(' ', '_')}__{registro['Data'].replace('/', '-')}.pdf"
-        st.download_button("📥 Baixar PDF", buffer, file_name=nome_pdf)
-    except Exception as e:
-        st.error(f"Erro ao gerar PDF: {e}")
+    gerar_pdf(registro)
