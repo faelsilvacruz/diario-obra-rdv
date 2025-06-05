@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph
+from reportlab.lib.colors import HexColor
 from PIL import Image
 import json
 import io
@@ -96,67 +97,42 @@ def gerar_pdf(registro):
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
         largura, altura = A4
-        
-        # Configurações de layout
+
         margem_esquerda = 50
         margem_direita = 50
         margem_superior = 50
         margem_inferior = 50
         largura_util = largura - margem_esquerda - margem_direita
-        
-        # Estilos
-        estilo_normal = ParagraphStyle(
-            name='Normal',
-            fontName='Helvetica',
-            fontSize=12,
-            leading=14,
-            alignment=0,  # Alinhamento à esquerda
-            wordWrap='LTR'
-        )
-        
-        estilo_titulo = ParagraphStyle(
-            name='Titulo',
-            fontName='Helvetica-Bold',
-            fontSize=16,
-            leading=18,
-            alignment=0,
-            spaceAfter=20
-        )
-
         y = altura - margem_superior
 
-        # Título
         c.setFont("Helvetica-Bold", 16)
-        c.drawString(margem_esquerda, y, "Diário de Obra - RDV Engenharia")
+        c.setFillColor(HexColor("#0F2A4D"))  # Cor institucional
+        c.drawCentredString(largura / 2, y, "Diário de Obra - RDV Engenharia")
         y -= 30
+        c.setFillColor("black")  # Reset cor para texto comum
+        c.setFont("Helvetica", 12)
 
-        # Informações básicas
         campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
         for campo in campos:
             valor = str(registro.get(campo, "")).strip()
             if valor.lower() == 'nan' or not valor:
                 valor = "Não informado"
-            
             c.drawString(margem_esquerda, y, f"{campo}: {valor}")
             y -= 20
 
-        # Seção Efetivo - CORREÇÃO CRÍTICA
         c.drawString(margem_esquerda, y, "5. Efetivo de Pessoal:")
         y -= 20
-        
+
         try:
             efetivo_data = json.loads(registro.get("Efetivo", "[]"))
             if efetivo_data:
                 for item in efetivo_data:
                     linha = f"- {item.get('Nome', 'Não informado')} ({item.get('Função', 'Não informado')}): " \
-                           f"{item.get('Entrada', 'Não informado')} - {item.get('Saída', 'Não informado')}"
-                    
-                    # Verifica se precisa de nova página
+                            f"{item.get('Entrada', 'Não informado')} - {item.get('Saída', 'Não informado')}"
                     if y < margem_inferior + 20:
                         c.showPage()
                         y = altura - margem_superior
                         c.setFont("Helvetica", 12)
-                    
                     c.drawString(margem_esquerda + 10, y, linha)
                     y -= 15
             else:
@@ -166,9 +142,6 @@ def gerar_pdf(registro):
             c.drawString(margem_esquerda + 10, y, f"Erro ao carregar efetivo: {str(e)}")
             y -= 15
 
-        # Outras seções (ocorrências, assinaturas, etc.)
-        # [...] (mantenha o restante do seu código aqui)
-
         c.save()
         buffer.seek(0)
         return buffer
@@ -177,7 +150,6 @@ def gerar_pdf(registro):
         return None
 
 if st.button("💾 Salvar Registro"):
-    # Pré-processamento do efetivo
     efetivo_para_salvar = []
     for colaborador in efetivo_lista:
         efetivo_para_salvar.append({
@@ -186,7 +158,7 @@ if st.button("💾 Salvar Registro"):
             "Entrada": colaborador.get("Entrada", "Não informado"),
             "Saída": colaborador.get("Saída", "Não informado")
         })
-    
+
     registro = {
         "Obra": obra if obra else "Não informado",
         "Local": local if local else "Não informado",
@@ -201,14 +173,6 @@ if st.button("💾 Salvar Registro"):
         "Fiscalização": nome_fiscal if nome_fiscal else ""
     }
 
-    # Debug: Mostrar dados antes de gerar PDF
-    st.write("Dados do efetivo que serão salvos:", efetivo_para_salvar)
-    st.write("Registro completo:", registro)
-
-    # Processamento de fotos (mantido do seu código original)
-    # [...]
-
-    # Geração do PDF
     pdf_buffer = gerar_pdf(registro)
     if pdf_buffer:
         nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
