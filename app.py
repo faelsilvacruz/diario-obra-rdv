@@ -12,10 +12,8 @@ from PIL import Image
 import json
 import io
 
-# Configuração da página
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
-# Leitura dos arquivos CSV
 try:
     colab_df = pd.read_csv("colaboradores.csv")
     colaboradores_lista = colab_df["Nome"].tolist()
@@ -37,29 +35,23 @@ except Exception as e:
     st.error(f"Erro ao carregar contratos: {e}")
     contratos_lista = [""]
 
-# Interface do usuário
 st.title("📋 Diário de Obra - RDV Engenharia")
 
-# Seção 1: Informações da Obra
 st.header("1. Informações da Obra")
 obra = st.selectbox("Obra", obras_lista)
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.selectbox("Contrato", contratos_lista)
 
-# Seção 2: Condições Climáticas
 st.header("2. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
-# Seção 3: Máquinas e Equipamentos
 st.header("3. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
-# Seção 4: Serviços Executados
 st.header("4. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
-# Seção 5: Efetivo de Pessoal
 st.header("5. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
@@ -69,8 +61,8 @@ for i in range(qtd_colaboradores):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
         funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0] if not colab_df.empty else ""
         funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
-        ent = st.time_input("Entrada", value=None, key=f"ent_{i}")
-        sai = st.time_input("Saída", value=None, key=f"sai_{i}")
+        ent = st.time_input("Entrada", key=f"ent_{i}")
+        sai = st.time_input("Saída", key=f"sai_{i}")
 
         efetivo_lista.append({
             "Nome": nome,
@@ -79,16 +71,13 @@ for i in range(qtd_colaboradores):
             "Saída": sai.strftime("%H:%M") if sai else "Não informado"
         })
 
-# Seção 6: Outras Ocorrências
 st.header("6. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
-# Seção 7: Assinaturas
 st.header("7. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
-# Seção 8: Fotos do Dia
 st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
@@ -97,22 +86,22 @@ def gerar_pdf(registro):
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
         largura, altura = A4
-
         margem_esquerda = 50
         margem_direita = 50
         margem_superior = 50
         margem_inferior = 50
         largura_util = largura - margem_esquerda - margem_direita
+
         y = altura - margem_superior
 
         c.setFont("Helvetica-Bold", 16)
-        c.setFillColor(HexColor("#0F2A4D"))  # Cor institucional
+        c.setFillColor(HexColor("#0F2A4D"))
         c.drawCentredString(largura / 2, y, "Diário de Obra - RDV Engenharia")
         y -= 30
-        c.setFillColor("black")  # Reset cor para texto comum
+        c.setFillColor("black")
         c.setFont("Helvetica", 12)
 
-        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
+        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas"]
         for campo in campos:
             valor = str(registro.get(campo, "")).strip()
             if valor.lower() == 'nan' or not valor:
@@ -120,27 +109,32 @@ def gerar_pdf(registro):
             c.drawString(margem_esquerda, y, f"{campo}: {valor}")
             y -= 20
 
+        c.drawString(margem_esquerda, y, "Serviços:")
+        y -= 15
+        servico_texto = registro.get("Serviços", "Não informado")
+        for linha in servico_texto.split("\n"):
+            c.drawString(margem_esquerda + 10, y, linha)
+            y -= 15
+
         c.drawString(margem_esquerda, y, "5. Efetivo de Pessoal:")
         y -= 20
-
         try:
             efetivo_data = json.loads(registro.get("Efetivo", "[]"))
-            if efetivo_data:
-                for item in efetivo_data:
-                    linha = f"- {item.get('Nome', 'Não informado')} ({item.get('Função', 'Não informado')}): " \
-                            f"{item.get('Entrada', 'Não informado')} - {item.get('Saída', 'Não informado')}"
-                    if y < margem_inferior + 20:
-                        c.showPage()
-                        y = altura - margem_superior
-                        c.setFont("Helvetica", 12)
-                    c.drawString(margem_esquerda + 10, y, linha)
-                    y -= 15
-            else:
-                c.drawString(margem_esquerda + 10, y, "Nenhum colaborador registrado")
+            for item in efetivo_data:
+                linha = f"- {item.get('Nome')} ({item.get('Função')}): {item.get('Entrada')} - {item.get('Saída')}"
+                c.drawString(margem_esquerda + 10, y, linha)
                 y -= 15
         except Exception as e:
             c.drawString(margem_esquerda + 10, y, f"Erro ao carregar efetivo: {str(e)}")
             y -= 15
+
+        c.drawString(margem_esquerda, y, f"Ocorrências: {registro.get('Ocorrências', 'Não informado')}")
+        y -= 20
+        c.drawString(margem_esquerda, y, f"Responsável Empresa: {registro.get('Responsável Empresa', 'Não informado')}")
+        y -= 20
+        if registro.get("Fiscalização"):
+            c.drawString(margem_esquerda, y, f"Fiscalização: {registro['Fiscalização']}")
+            y -= 20
 
         c.save()
         buffer.seek(0)
@@ -150,14 +144,14 @@ def gerar_pdf(registro):
         return None
 
 if st.button("💾 Salvar Registro"):
-    efetivo_para_salvar = []
-    for colaborador in efetivo_lista:
-        efetivo_para_salvar.append({
-            "Nome": colaborador.get("Nome", "Não informado"),
-            "Função": colaborador.get("Função", "Não informado"),
-            "Entrada": colaborador.get("Entrada", "Não informado"),
-            "Saída": colaborador.get("Saída", "Não informado")
-        })
+    efetivo_para_salvar = [
+        {
+            "Nome": col.get("Nome", "Não informado"),
+            "Função": col.get("Função", "Não informado"),
+            "Entrada": col.get("Entrada", "Não informado"),
+            "Saída": col.get("Saída", "Não informado")
+        } for col in efetivo_lista
+    ]
 
     registro = {
         "Obra": obra if obra else "Não informado",
