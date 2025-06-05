@@ -6,10 +6,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Paragraph, Frame, KeepInFrame
+from reportlab.platypus import Paragraph, Frame, KeepInFrame, Image as ReportLabImage
 from reportlab.lib.units import inch, mm
 from reportlab.lib.colors import HexColor
-from PIL import Image
+from PIL import Image as PILImage
 import json
 import io
 import textwrap
@@ -94,7 +94,7 @@ nome_fiscal = st.text_input("Nome da fiscalização")
 st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
-def gerar_pdf(registro):
+def gerar_pdf(registro, fotos_paths=None):
     try:
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
@@ -109,8 +109,15 @@ def gerar_pdf(registro):
         
         # Estilos
         styles = getSampleStyleSheet()
-        estilo_titulo = styles['Heading1']
-        estilo_titulo.textColor = HexColor("#0F2A4D")
+        
+        # Estilo para título centralizado
+        estilo_titulo = ParagraphStyle(
+            'TituloCentralizado',
+            parent=styles['Heading1'],
+            textColor=HexColor("#0F2A4D"),
+            alignment=1,  # 0=esquerda, 1=centro, 2=direita
+            spaceAfter=14
+        )
         
         estilo_normal = ParagraphStyle(
             'Normal',
@@ -126,7 +133,8 @@ def gerar_pdf(registro):
             parent=styles['Normal'],
             fontSize=12,
             leading=14,
-            fontName='Helvetica-Bold'
+            fontName='Helvetica-Bold',
+            spaceAfter=6
         )
         
         # Função para adicionar parágrafos com controle de página
@@ -136,15 +144,17 @@ def gerar_pdf(registro):
             if y_pos - h < margin_bottom:
                 c.showPage()
                 y_pos = height - margin_top
+                # Redefine o estilo da fonte após quebra de página
+                c.setFont("Helvetica", 12)
             p.drawOn(c, margin_left, y_pos - h)
             return y_pos - h - 6
         
         y_pos = height - margin_top
         
-        # Título
-        p_titulo = Paragraph("Diário de Obra - RDV Engenharia", estilo_titulo)
+        # Título centralizado
+        p_titulo = Paragraph("<b>DIÁRIO DE OBRA - RDV ENGENHARIA</b>", estilo_titulo)
         w, h = p_titulo.wrap(content_width, height)
-        p_titulo.drawOn(c, margin_left, y_pos - h)
+        p_titulo.drawOn(c, (width - w) / 2, y_pos - h)  # Centraliza horizontalmente
         y_pos -= h + 10 * mm
         
         # Informações básicas
@@ -164,8 +174,8 @@ def gerar_pdf(registro):
         for linha in textwrap.wrap(servicos_texto, width=100):
             y_pos = add_paragraph(linha, estilo_normal, y_pos)
         
-        # Efetivo de Pessoal
-        y_pos = add_paragraph("<b>5. Efetivo de Pessoal:</b>", estilo_destaque, y_pos)
+        # Efetivo de Pessoal (sem o número 5)
+        y_pos = add_paragraph("<b>Efetivo de Pessoal:</b>", estilo_destaque, y_pos)
         
         try:
             efetivo_data = json.loads(registro.get("Efetivo", "[]"))
@@ -186,6 +196,47 @@ def gerar_pdf(registro):
         
         if registro.get("Fiscalização"):
             y_pos = add_paragraph(f"Fiscalização: {registro['Fiscalização']}", estilo_normal, y_pos)
+        
+        # Adicionar fotos se existirem
+        if fotos_paths:
+            for foto_path in fotos_paths:
+                try:
+                    # Nova página para cada foto
+                    c.showPage()
+                    y_pos = height - margin_top
+                    
+                    # Título da foto
+                    y_pos = add_paragraph(f"<b>Foto: {Path(foto_path).name}</b>", estilo_destaque, y_pos)
+                    y_pos -= 10  # Espaço adicional
+                    
+                    # Carrega e redimensiona a imagem
+                    img = PILImage.open(foto_path)
+                    img_width, img_height = img.size
+                    aspect = img_height / float(img_width)
+                    
+                    # Define o tamanho máximo da imagem
+                    max_width = content_width
+                    max_height = height - margin_top - margin_bottom - 50  # Deixa espaço para legenda
+                    
+                    if img_width > max_width:
+                        img_height = int(max_width * aspect)
+                        img_width = max_width
+                        if img_height > max_height:
+                            img_width = int(max_height / aspect)
+                            img_height = max_height
+                    
+                    # Centraliza a imagem
+                    x_pos = (width - img_width) / 2
+                    
+                    # Desenha a imagem
+                    c.drawImage(foto_path, x_pos, y_pos - img_height, width=img_width, height=img_height)
+                    
+                except Exception as e:
+                    # Se houver erro, mostra mensagem no PDF
+                    c.showPage()
+                    y_pos = height - margin_top
+                    y_pos = add_paragraph(f"Erro ao carregar imagem: {Path(foto_path).name}", estilo_normal, y_pos)
+                    continue
         
         c.save()
         buffer.seek(0)
@@ -224,7 +275,7 @@ if st.button("💾 Salvar Registro"):
     # Processamento de fotos
     fotos_dir = Path("fotos")
     fotos_dir.mkdir(parents=True, exist_ok=True)
-    nomes_arquivos = []
+    fotos_paths = []
     
     if fotos:
         for i, foto in enumerate(fotos):
@@ -233,17 +284,13 @@ if st.button("💾 Salvar Registro"):
                 caminho_foto = fotos_dir / nome_foto
                 with open(caminho_foto, "wb") as f:
                     f.write(foto.getbuffer())
-                nomes_arquivos.append(str(caminho_foto))
+                fotos_paths.append(str(caminho_foto))
             except Exception as e:
                 st.warning(f"Erro ao salvar foto {i+1}: {str(e)}")
                 continue
-        
-        registro["Fotos"] = ",".join(nomes_arquivos)
-    else:
-        registro["Fotos"] = ""
 
-    # Geração do PDF
-    pdf_buffer = gerar_pdf(registro)
+    # Geração do PDF com as fotos
+    pdf_buffer = gerar_pdf(registro, fotos_paths if fotos_paths else None)
     if pdf_buffer:
         nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
         st.download_button(
