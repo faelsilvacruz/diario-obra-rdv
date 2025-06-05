@@ -5,15 +5,19 @@ from pathlib import Path
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import Paragraph
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import Paragraph, Frame, KeepInFrame
+from reportlab.lib.units import inch, mm
 from reportlab.lib.colors import HexColor
 from PIL import Image
 import json
 import io
+import textwrap
 
+# Configuração da página
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
+# Leitura dos arquivos CSV
 try:
     colab_df = pd.read_csv("colaboradores.csv")
     colaboradores_lista = colab_df["Nome"].tolist()
@@ -35,23 +39,29 @@ except Exception as e:
     st.error(f"Erro ao carregar contratos: {e}")
     contratos_lista = [""]
 
+# Interface do usuário
 st.title("📋 Diário de Obra - RDV Engenharia")
 
+# Seção 1: Informações da Obra
 st.header("1. Informações da Obra")
 obra = st.selectbox("Obra", obras_lista)
 local = st.text_input("Local")
 data = st.date_input("Data", value=datetime.today())
 contrato = st.selectbox("Contrato", contratos_lista)
 
+# Seção 2: Condições Climáticas
 st.header("2. Condições Climáticas")
 clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
+# Seção 3: Máquinas e Equipamentos
 st.header("3. Máquinas e Equipamentos")
 maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
+# Seção 4: Serviços Executados
 st.header("4. Serviços Executados")
 servicos = st.text_area("Descreva os serviços executados no dia")
 
+# Seção 5: Efetivo de Pessoal
 st.header("5. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
@@ -71,13 +81,16 @@ for i in range(qtd_colaboradores):
             "Saída": sai.strftime("%H:%M") if sai else "Não informado"
         })
 
+# Seção 6: Outras Ocorrências
 st.header("6. Outras Ocorrências")
 ocorrencias = st.text_area("Observações adicionais")
 
+# Seção 7: Assinaturas
 st.header("7. Assinaturas")
 nome_empresa = st.text_input("Nome do responsável pela empresa")
 nome_fiscal = st.text_input("Nome da fiscalização")
 
+# Seção 8: Fotos do Dia
 st.header("8. Fotos do Dia")
 fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
 
@@ -85,74 +98,115 @@ def gerar_pdf(registro):
     try:
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
-        largura, altura = A4
-        margem_esquerda = 50
-        margem_direita = 50
-        margem_superior = 50
-        margem_inferior = 50
-        largura_util = largura - margem_esquerda - margem_direita
-
-        y = altura - margem_superior
-
-        c.setFont("Helvetica-Bold", 16)
-        c.setFillColor(HexColor("#0F2A4D"))
-        c.drawCentredString(largura / 2, y, "Diário de Obra - RDV Engenharia")
-        y -= 30
-        c.setFillColor("black")
-        c.setFont("Helvetica", 12)
-
+        width, height = A4
+        
+        # Configurações de layout
+        margin_left = 20 * mm
+        margin_right = 20 * mm
+        margin_top = 20 * mm
+        margin_bottom = 20 * mm
+        content_width = width - margin_left - margin_right
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        estilo_titulo = styles['Heading1']
+        estilo_titulo.textColor = HexColor("#0F2A4D")
+        
+        estilo_normal = ParagraphStyle(
+            'Normal',
+            parent=styles['Normal'],
+            fontSize=12,
+            leading=14,
+            spaceAfter=6,
+            spaceBefore=6
+        )
+        
+        estilo_destaque = ParagraphStyle(
+            'Destaque',
+            parent=styles['Normal'],
+            fontSize=12,
+            leading=14,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Função para adicionar parágrafos com controle de página
+        def add_paragraph(text, style, y_pos):
+            p = Paragraph(text, style)
+            w, h = p.wrap(content_width, height)
+            if y_pos - h < margin_bottom:
+                c.showPage()
+                y_pos = height - margin_top
+            p.drawOn(c, margin_left, y_pos - h)
+            return y_pos - h - 6
+        
+        y_pos = height - margin_top
+        
+        # Título
+        p_titulo = Paragraph("Diário de Obra - RDV Engenharia", estilo_titulo)
+        w, h = p_titulo.wrap(content_width, height)
+        p_titulo.drawOn(c, margin_left, y_pos - h)
+        y_pos -= h + 10 * mm
+        
+        # Informações básicas
         campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas"]
         for campo in campos:
             valor = str(registro.get(campo, "")).strip()
             if valor.lower() == 'nan' or not valor:
                 valor = "Não informado"
-            c.drawString(margem_esquerda, y, f"{campo}: {valor}")
-            y -= 20
-
-        c.drawString(margem_esquerda, y, "Serviços:")
-        y -= 15
-        servico_texto = registro.get("Serviços", "Não informado")
-        for linha in servico_texto.split("\n"):
-            c.drawString(margem_esquerda + 10, y, linha)
-            y -= 15
-
-        c.drawString(margem_esquerda, y, "5. Efetivo de Pessoal:")
-        y -= 20
+            
+            texto = f"<b>{campo}:</b> {valor}"
+            y_pos = add_paragraph(texto, estilo_normal, y_pos)
+        
+        # Serviços Executados
+        y_pos = add_paragraph("<b>Serviços Executados:</b>", estilo_destaque, y_pos)
+        
+        servicos_texto = registro.get("Serviços", "Não informado").strip()
+        for linha in textwrap.wrap(servicos_texto, width=100):
+            y_pos = add_paragraph(linha, estilo_normal, y_pos)
+        
+        # Efetivo de Pessoal
+        y_pos = add_paragraph("<b>5. Efetivo de Pessoal:</b>", estilo_destaque, y_pos)
+        
         try:
             efetivo_data = json.loads(registro.get("Efetivo", "[]"))
             for item in efetivo_data:
-                linha = f"- {item.get('Nome')} ({item.get('Função')}): {item.get('Entrada')} - {item.get('Saída')}"
-                c.drawString(margem_esquerda + 10, y, linha)
-                y -= 15
+                texto = f"- {item.get('Nome', 'Não informado')} ({item.get('Função', 'Não informado')}): " \
+                       f"{item.get('Entrada', 'Não informado')} - {item.get('Saída', 'Não informado')}"
+                y_pos = add_paragraph(texto, estilo_normal, y_pos)
         except Exception as e:
-            c.drawString(margem_esquerda + 10, y, f"Erro ao carregar efetivo: {str(e)}")
-            y -= 15
-
-        c.drawString(margem_esquerda, y, f"Ocorrências: {registro.get('Ocorrências', 'Não informado')}")
-        y -= 20
-        c.drawString(margem_esquerda, y, f"Responsável Empresa: {registro.get('Responsável Empresa', 'Não informado')}")
-        y -= 20
+            y_pos = add_paragraph(f"Erro ao carregar efetivo: {str(e)}", estilo_normal, y_pos)
+        
+        # Outras Ocorrências
+        y_pos = add_paragraph("<b>Outras Ocorrências:</b>", estilo_destaque, y_pos)
+        y_pos = add_paragraph(registro.get("Ocorrências", "Nenhuma ocorrência registrada"), estilo_normal, y_pos)
+        
+        # Assinaturas
+        y_pos = add_paragraph("<b>Assinaturas:</b>", estilo_destaque, y_pos)
+        y_pos = add_paragraph(f"Responsável Empresa: {registro.get('Responsável Empresa', 'Não informado')}", estilo_normal, y_pos)
+        
         if registro.get("Fiscalização"):
-            c.drawString(margem_esquerda, y, f"Fiscalização: {registro['Fiscalização']}")
-            y -= 20
-
+            y_pos = add_paragraph(f"Fiscalização: {registro['Fiscalização']}", estilo_normal, y_pos)
+        
         c.save()
         buffer.seek(0)
         return buffer
+        
     except Exception as e:
         st.error(f"Erro na geração do PDF: {str(e)}")
         return None
 
 if st.button("💾 Salvar Registro"):
-    efetivo_para_salvar = [
-        {
-            "Nome": col.get("Nome", "Não informado"),
-            "Função": col.get("Função", "Não informado"),
-            "Entrada": col.get("Entrada", "Não informado"),
-            "Saída": col.get("Saída", "Não informado")
-        } for col in efetivo_lista
-    ]
-
+    # Pré-processamento do efetivo
+    efetivo_para_salvar = []
+    for colaborador in efetivo_lista:
+        efetivo_para_salvar.append({
+            "Nome": colaborador.get("Nome", "Não informado"),
+            "Função": colaborador.get("Função", "Não informado"),
+            "Entrada": colaborador.get("Entrada", "Não informado"),
+            "Saída": colaborador.get("Saída", "Não informado")
+        })
+    
+    # Criação do registro
     registro = {
         "Obra": obra if obra else "Não informado",
         "Local": local if local else "Não informado",
@@ -167,6 +221,28 @@ if st.button("💾 Salvar Registro"):
         "Fiscalização": nome_fiscal if nome_fiscal else ""
     }
 
+    # Processamento de fotos
+    fotos_dir = Path("fotos")
+    fotos_dir.mkdir(parents=True, exist_ok=True)
+    nomes_arquivos = []
+    
+    if fotos:
+        for i, foto in enumerate(fotos):
+            try:
+                nome_foto = f"{obra}_{data.strftime('%Y-%m-%d')}_foto{i+1}.jpg".replace(" ", "_").replace("/", "-")
+                caminho_foto = fotos_dir / nome_foto
+                with open(caminho_foto, "wb") as f:
+                    f.write(foto.getbuffer())
+                nomes_arquivos.append(str(caminho_foto))
+            except Exception as e:
+                st.warning(f"Erro ao salvar foto {i+1}: {str(e)}")
+                continue
+        
+        registro["Fotos"] = ",".join(nomes_arquivos)
+    else:
+        registro["Fotos"] = ""
+
+    # Geração do PDF
     pdf_buffer = gerar_pdf(registro)
     if pdf_buffer:
         nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
