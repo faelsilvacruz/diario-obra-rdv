@@ -53,8 +53,8 @@ for i in range(qtd_colaboradores):
         nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
         funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
         funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
-        ent1 = st.time_input("1ª Entrada", value=None, key=f"ent1_{i}")
-        sai1 = st.time_input("1ª Saída", value=None, key=f"sai1_{i}")
+        ent1 = st.time_input("Entrada", value=None, key=f"ent1_{i}")
+        sai1 = st.time_input("Saída", value=None, key=f"sai1_{i}")
 
         efetivo_lista.append({
             "Nome": nome,
