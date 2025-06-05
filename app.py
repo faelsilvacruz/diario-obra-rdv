@@ -92,10 +92,7 @@ fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_
 def gerar_pdf(registro):
     try:
         Path("relatorios").mkdir(parents=True, exist_ok=True)
-        
-        # Nome do arquivo mais seguro
-        nome_obra = registro['Obra'].replace(' ', '_').replace('/', '-').replace('\\', '-')
-        nome_pdf = f"relatorios/Diario_{nome_obra}_{registro['Data'].replace('/', '-')}.pdf"
+        nome_pdf = f"relatorios/Diario_{registro['Obra'].replace(' ', '_')}_{registro['Data'].replace('/', '-')}.pdf"
         
         c = canvas.Canvas(nome_pdf, pagesize=A4)
         largura, altura = A4
@@ -103,62 +100,73 @@ def gerar_pdf(registro):
 
         # Cabeçalho
         c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, y, "📋 Diário de Obra - RDV Engenharia")
+        c.drawString(50, y, "Diário de Obra - RDV Engenharia")
         y -= 30
         c.setFont("Helvetica", 12)
 
-        # Informações gerais
-        campos_gerais = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
-        for campo in campos_gerais:
-            valor = str(registro.get(campo, "")).strip()
+        # Informações básicas
+        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas"]
+        for campo in campos:
+            valor = str(registro.get(campo, '')).strip()
             if valor.lower() == 'nan' or not valor:
                 valor = "Não informado"
             c.drawString(50, y, f"{campo}: {valor}")
             y -= 20
 
-        # Efetivo - usando json em vez de ast
+        # Serviços Executados - com tratamento especial
+        c.drawString(50, y, "Serviços:")
+        y -= 20
+        servicos_texto = str(registro.get('Serviços', '')).strip()
+        if servicos_texto.lower() == 'nan' or not servicos_texto:
+            servicos_texto = "Não informado"
+
+        from textwrap import wrap
+        linhas_servicos = wrap(servicos_texto, width=100)
+        
+        for linha in linhas_servicos:
+            if y < 100:  # Nova página se necessário
+                c.showPage()
+                y = altura - 50
+                c.setFont("Helvetica", 12)
+            c.drawString(60, y, linha)
+            y -= 20
+
+        # Efetivo
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
             efetivo_data = json.loads(registro["Efetivo"].replace("'", '"'))
             for item in efetivo_data:
                 linha = f"- {item['Nome']} ({item['Função']}): {item['Entrada']} - {item['Saída']}"
-                c.drawString(60, y, linha)
-                y -= 20
-                if y < 100:  # Verifica se está no final da página
+                if y < 100:
                     c.showPage()
                     y = altura - 50
+                    c.setFont("Helvetica", 12)
+                c.drawString(60, y, linha)
+                y -= 20
         except Exception as e:
-            c.drawString(60, y, f"Erro ao processar efetivo: {str(e)}")
+            if y < 100:
+                c.showPage()
+                y = altura - 50
+            c.drawString(60, y, "Erro ao processar efetivo")
             y -= 20
 
         # Rodapé
+        if y < 100:
+            c.showPage()
+            y = altura - 50
+            c.setFont("Helvetica", 12)
+            
         c.drawString(50, y, f"Ocorrências: {registro.get('Ocorrências', 'Não informado')}")
         y -= 20
         c.drawString(50, y, f"Responsável Empresa: {registro.get('Responsável Empresa', 'Não informado')}")
         y -= 20
-        if registro.get('Fiscalização'):
-            c.drawString(50, y, f"Fiscalização: {registro['Fiscalização']}")
-            y -= 20
-
-        # Fotos
-        if registro.get("Fotos"):
-            fotos_list = [f.strip() for f in registro["Fotos"].split(",") if f.strip()]
-            for foto_path in fotos_list:
-                try:
-                    c.showPage()
-                    c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
-                    img = Image.open(foto_path)
-                    img.thumbnail((500, 500))  # Redimensiona mantendo proporção
-                    c.drawImage(ImageReader(img), 50, altura / 2 - 100, width=400, preserveAspectRatio=True)
-                except Exception as e:
-                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {Path(foto_path).name}")
-                    continue
 
         c.save()
-        st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
+        st.success(f"PDF gerado com sucesso: {nome_pdf}")
         with open(nome_pdf, "rb") as f:
             st.download_button("📥 Baixar PDF", f, file_name=Path(nome_pdf).name)
+            
     except Exception as e:
         st.error(f"Erro ao gerar PDF: {str(e)}")
 
