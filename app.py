@@ -11,13 +11,15 @@ import os
 
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
-# Leitura das listas
+# Leitura de arquivos auxiliares
 colab_df = pd.read_csv("colaboradores.csv")
-obras_df = pd.read_csv("obras.csv")
-contratos_df = pd.read_csv("contratos.csv")
 colaboradores_lista = colab_df["Nome"].tolist()
-obras_lista = ["Selecionar"] + obras_df["Nome"].tolist()
-contratos_lista = ["Selecionar"] + contratos_df["Nome"].tolist()
+
+obras_df = pd.read_csv("obras.csv")
+obras_lista = [""] + obras_df["Nome"].tolist()
+
+contratos_df = pd.read_csv("contratos.csv")
+contratos_lista = [""] + contratos_df["Nome"].tolist()
 
 # Título
 st.title("📋 Diário de Obra - RDV Engenharia")
@@ -26,7 +28,7 @@ st.title("📋 Diário de Obra - RDV Engenharia")
 st.header("1. Informações da Obra")
 obra = st.selectbox("Obra", obras_lista)
 local = st.text_input("Local")
-data = st.date_input("Data", value=datetime.today())
+data = st.date_input("Data", value=datetime.today(), format="DD/MM/YYYY")
 contrato = st.selectbox("Contrato", contratos_lista)
 
 # Clima
@@ -45,11 +47,12 @@ servicos = st.text_area("Descreva os serviços executados no dia")
 st.header("5. Efetivo de Pessoal")
 qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
 efetivo_lista = []
+
 for i in range(qtd_colaboradores):
     with st.expander(f"👷 Colaborador {i+1}"):
-        nome = st.selectbox("Nome", colaboradores_lista, key=f"nome_{i}")
+        nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
         funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0]
-        funcao = st.text_input("Função", value=funcao_sugerida, key=f"funcao_{i}")
+        funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
         ent1 = st.time_input("1ª Entrada", key=f"ent1_{i}")
         sai1 = st.time_input("1ª Saída", key=f"sai1_{i}")
         ent2 = st.time_input("2ª Entrada", key=f"ent2_{i}")
@@ -91,45 +94,50 @@ def gerar_pdf(registro):
         y -= 30
         c.setFont("Helvetica", 12)
 
-        campos = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
-        for campo in campos:
+        campos_gerais = ["Obra", "Local", "Data", "Contrato", "Clima", "Máquinas", "Serviços"]
+        for campo in campos_gerais:
             c.drawString(50, y, f"{campo}: {registro[campo]}")
             y -= 20
 
         c.drawString(50, y, "Efetivo:")
         y -= 20
         try:
-            efetivo_corrigido = registro["Efetivo"].replace(": 0", ": ")
-            efetivo = ast.literal_eval(efetivo_corrigido)
-            for item in efetivo:
+            for item in ast.literal_eval(registro["Efetivo"]):
                 linha = f"- {item['Nome']} ({item['Função']}): {item['1ª Entrada']} - {item['1ª Saída']} | {item['2ª Entrada']} - {item['2ª Saída']}"
                 c.drawString(60, y, linha)
                 y -= 20
         except Exception as e:
-            c.drawString(60, y, "Erro ao processar efetivo.")
+            c.drawString(60, y, "Erro ao processar o campo Efetivo.")
             y -= 20
 
         c.drawString(50, y, f"Ocorrências: {registro['Ocorrências']}")
         y -= 20
         c.drawString(50, y, f"Responsável Empresa: {registro['Responsável Empresa']}")
         y -= 20
-        if registro["Fiscalização"]:
+        if pd.notna(registro['Fiscalização']) and str(registro['Fiscalização']).strip():
             c.drawString(50, y, f"Fiscalização: {registro['Fiscalização']}")
             y -= 20
 
-        if registro["Fotos"]:
-            for foto_path in registro["Fotos"].split(", "):
-                if os.path.exists(foto_path):
+        if registro.get("Fotos"):
+            fotos = str(registro["Fotos"]).split(", ")
+            for foto_path in fotos:
+                try:
                     c.showPage()
                     c.drawString(50, altura - 50, f"📷 Foto: {Path(foto_path).name}")
                     img = Image.open(foto_path)
                     img.thumbnail((500, 500))
                     c.drawImage(ImageReader(img), 50, altura / 2 - 100)
+                except Exception:
+                    c.drawString(50, altura - 100, f"Erro ao carregar imagem: {foto_path}")
+                    continue
 
         c.save()
         st.success(f"📄 PDF gerado com sucesso: {nome_pdf}")
+        with open(nome_pdf, "rb") as f:
+            st.download_button("📥 Baixar PDF", f, file_name=Path(nome_pdf).name)
+
     except Exception as e:
-        st.warning(f"Registro salvo, mas erro ao gerar PDF: {e}")
+        st.error(f"Erro ao gerar PDF: {e}")
 
 # Botão de salvar
 if st.button("💾 Salvar Registro"):
@@ -144,7 +152,7 @@ if st.button("💾 Salvar Registro"):
         "Efetivo": str(efetivo_lista),
         "Ocorrências": ocorrencias,
         "Responsável Empresa": nome_empresa,
-        "Fiscalização": nome_fiscal if nome_fiscal else ""
+        "Fiscalização": nome_fiscal
     }
 
     fotos_dir = Path("fotos")
@@ -158,7 +166,9 @@ if st.button("💾 Salvar Registro"):
             with open(caminho_foto, "wb") as f:
                 f.write(foto.getbuffer())
             nomes_arquivos.append(str(caminho_foto))
-    registro["Fotos"] = ", ".join(nomes_arquivos)
+        registro["Fotos"] = ", ".join(nomes_arquivos)
+    else:
+        registro["Fotos"] = ""
 
     df = pd.DataFrame([registro])
     df.to_csv("registros_diario_obra.csv", mode='a', header=not Path("registros_diario_obra.csv").exists(), index=False)
