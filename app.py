@@ -13,7 +13,7 @@ import json
 import io
 import textwrap
 
-# Configuração da página
+# ✅✅✅ DEVE SER O PRIMEIRO COMANDO DO APP ✅✅✅
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
 # Leitura dos arquivos CSV
@@ -41,62 +41,149 @@ def carregar_dados():
     
     return colaboradores_lista, obras_lista, contratos_lista, colab_df
 
-colaboradores_lista, obras_lista, contratos_lista, colab_df = carregar_dados()
-
 # Interface do usuário
-st.title("📋 Diário de Obra - RDV Engenharia")
+def main():
+    colaboradores_lista, obras_lista, contratos_lista, colab_df = carregar_dados()
 
-# Seção 1: Informações da Obra
-st.header("1. Informações da Obra")
-obra = st.selectbox("Obra", obras_lista)
-local = st.text_input("Local")
-data = st.date_input("Data", value=datetime.today())
-contrato = st.selectbox("Contrato", contratos_lista)
+    st.title("📋 Diário de Obra - RDV Engenharia")
 
-# Seção 2: Condições Climáticas
-st.header("2. Condições Climáticas")
-clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
+    # Seção 1: Informações da Obra
+    st.header("1. Informações da Obra")
+    obra = st.selectbox("Obra", obras_lista)
+    local = st.text_input("Local")
+    data = st.date_input("Data", value=datetime.today())
+    contrato = st.selectbox("Contrato", contratos_lista)
 
-# Seção 3: Máquinas e Equipamentos
-st.header("3. Máquinas e Equipamentos")
-maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
+    # Seção 2: Condições Climáticas
+    st.header("2. Condições Climáticas")
+    clima = st.selectbox("Condições do dia", ["Bom", "Chuva", "Garoa", "Impraticável", "Feriado"])
 
-# Seção 4: Serviços Executados
-st.header("4. Serviços Executados")
-servicos = st.text_area("Descreva os serviços executados no dia")
+    # Seção 3: Máquinas e Equipamentos
+    st.header("3. Máquinas e Equipamentos")
+    maquinas = st.text_area("Descreva as máquinas e equipamentos utilizados")
 
-# Seção 5: Efetivo de Pessoal
-st.header("5. Efetivo de Pessoal")
-qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
-efetivo_lista = []
+    # Seção 4: Serviços Executados
+    st.header("4. Serviços Executados")
+    servicos = st.text_area("Descreva os serviços executados no dia")
 
-for i in range(qtd_colaboradores):
-    with st.expander(f"👷 Colaborador {i+1}"):
-        nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
-        funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0] if not colab_df.empty else ""
-        funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
-        ent = st.time_input("Entrada", key=f"ent_{i}")
-        sai = st.time_input("Saída", key=f"sai_{i}")
+    # Seção 5: Efetivo de Pessoal
+    st.header("5. Efetivo de Pessoal")
+    qtd_colaboradores = st.number_input("Quantos colaboradores hoje?", min_value=1, max_value=10, step=1)
+    efetivo_lista = []
 
-        efetivo_lista.append({
-            "Nome": nome,
-            "Função": funcao,
-            "Entrada": ent.strftime("%H:%M") if ent else "Não informado",
-            "Saída": sai.strftime("%H:%M") if sai else "Não informado"
-        })
+    for i in range(qtd_colaboradores):
+        with st.expander(f"👷 Colaborador {i+1}"):
+            nome = st.selectbox(f"Nome", colaboradores_lista, key=f"nome_{i}")
+            funcao_sugerida = colab_df.loc[colab_df["Nome"] == nome, "Função"].values[0] if not colab_df.empty else ""
+            funcao = st.text_input(f"Função", value=funcao_sugerida, key=f"funcao_{i}")
+            ent = st.time_input("Entrada", key=f"ent_{i}")
+            sai = st.time_input("Saída", key=f"sai_{i}")
 
-# Seção 6: Outras Ocorrências
-st.header("6. Outras Ocorrências")
-ocorrencias = st.text_area("Observações adicionais")
+            efetivo_lista.append({
+                "Nome": nome,
+                "Função": funcao,
+                "Entrada": ent.strftime("%H:%M") if ent else "Não informado",
+                "Saída": sai.strftime("%H:%M") if sai else "Não informado"
+            })
 
-# Seção 7: Assinaturas
-st.header("7. Assinaturas")
-nome_empresa = st.text_input("Nome do responsável pela empresa")
-nome_fiscal = st.text_input("Nome da fiscalização")
+    # Seção 6: Outras Ocorrências
+    st.header("6. Outras Ocorrências")
+    ocorrencias = st.text_area("Observações adicionais")
 
-# Seção 8: Fotos do Dia
-st.header("8. Fotos do Dia")
-fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
+    # Seção 7: Assinaturas
+    st.header("7. Assinaturas")
+    nome_empresa = st.text_input("Nome do responsável pela empresa")
+    nome_fiscal = st.text_input("Nome da fiscalização")
+
+    # Seção 8: Fotos do Dia
+    st.header("8. Fotos do Dia")
+    fotos = st.file_uploader("Envie uma ou mais fotos do serviço", accept_multiple_files=True, type=["png", "jpg", "jpeg"])
+
+    if st.button("💾 Salvar Registro"):
+        # Pré-processamento do efetivo
+        efetivo_para_salvar = []
+        for colaborador in efetivo_lista:
+            efetivo_para_salvar.append({
+                "Nome": colaborador.get("Nome", "Não informado"),
+                "Função": colaborador.get("Função", "Não informado"),
+                "Entrada": colaborador.get("Entrada", "Não informado"),
+                "Saída": colaborador.get("Saída", "Não informado")
+            })
+        
+        # Criação do registro
+        registro = {
+            "Obra": obra if obra else "Não informado",
+            "Local": local if local else "Não informado",
+            "Data": data.strftime("%d/%m/%Y"),
+            "Contrato": contrato if contrato else "Não informado",
+            "Clima": clima,
+            "Máquinas": maquinas if maquinas else "Não informado",
+            "Serviços": servicos if servicos else "Não informado",
+            "Efetivo": json.dumps(efetivo_para_salvar, ensure_ascii=False),
+            "Ocorrências": ocorrencias if ocorrencias else "Nenhuma ocorrência registrada",
+            "Responsável Empresa": nome_empresa if nome_empresa else "Não informado",
+            "Fiscalização": nome_fiscal if nome_fiscal else ""
+        }
+
+        # Processamento de fotos
+        fotos_dir = Path("fotos")
+        fotos_dir.mkdir(parents=True, exist_ok=True)
+        fotos_paths = []
+        
+        if fotos:
+            for i, foto in enumerate(fotos):
+                try:
+                    nome_foto = f"{obra}_{data.strftime('%Y-%m-%d')}_foto{i+1}.jpg".replace(" ", "_").replace("/", "-")
+                    caminho_foto = fotos_dir / nome_foto
+                    with open(caminho_foto, "wb") as f:
+                        f.write(foto.getbuffer())
+                    fotos_paths.append(str(caminho_foto))
+                except Exception as e:
+                    st.warning(f"Erro ao salvar foto {i+1}: {str(e)}")
+                    continue
+
+        # Geração do PDF
+        pdf_buffer = gerar_pdf(registro, fotos_paths if fotos_paths else None)
+        if pdf_buffer:
+            nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
+            
+            st.download_button(
+                label="📥 Baixar PDF",
+                data=pdf_buffer,
+                file_name=nome_pdf,
+                mime="application/pdf"
+            )
+            
+            st.markdown("""
+            <a href="whatsapp://send?text=Diário%20de%20Obra%20-%20Confira%20o%20relatório%20anexo" 
+               data-action="share/whatsapp/share"
+               style="
+                  display: inline-block;
+                  background-color: #25D366;
+                  color: white;
+                  padding: 10px 20px;
+                  text-align: center;
+                  text-decoration: none;
+                  border-radius: 5px;
+                  margin-top: 10px;
+                  font-weight: bold;
+               ">
+               📤 Compartilhar via WhatsApp
+            </a>
+            """, unsafe_allow_html=True)
+            
+            st.info("""
+            **Instruções para compartilhar no WhatsApp:**
+            1. Baixe o PDF primeiro (botão acima)
+            2. Clique em "Compartilhar via WhatsApp"
+            3. No WhatsApp, toque no ícone de anexo (+) 
+            4. Selecione "Documento" e escolha o PDF baixado
+            5. Envie para o grupo desejado
+            
+            **Dica:** O arquivo é salvo na pasta de downloads do seu celular.
+            """)
+            
+            st.success("PDF gerado com sucesso!")
 
 def gerar_pdf(registro, fotos_paths=None):
     try:
@@ -236,88 +323,5 @@ def gerar_pdf(registro, fotos_paths=None):
         st.error(f"Erro na geração do PDF: {str(e)}")
         return None
 
-if st.button("💾 Salvar Registro"):
-    # Pré-processamento do efetivo
-    efetivo_para_salvar = []
-    for colaborador in efetivo_lista:
-        efetivo_para_salvar.append({
-            "Nome": colaborador.get("Nome", "Não informado"),
-            "Função": colaborador.get("Função", "Não informado"),
-            "Entrada": colaborador.get("Entrada", "Não informado"),
-            "Saída": colaborador.get("Saída", "Não informado")
-        })
-    
-    # Criação do registro
-    registro = {
-        "Obra": obra if obra else "Não informado",
-        "Local": local if local else "Não informado",
-        "Data": data.strftime("%d/%m/%Y"),
-        "Contrato": contrato if contrato else "Não informado",
-        "Clima": clima,
-        "Máquinas": maquinas if maquinas else "Não informado",
-        "Serviços": servicos if servicos else "Não informado",
-        "Efetivo": json.dumps(efetivo_para_salvar, ensure_ascii=False),
-        "Ocorrências": ocorrencias if ocorrencias else "Nenhuma ocorrência registrada",
-        "Responsável Empresa": nome_empresa if nome_empresa else "Não informado",
-        "Fiscalização": nome_fiscal if nome_fiscal else ""
-    }
-
-    # Processamento de fotos
-    fotos_dir = Path("fotos")
-    fotos_dir.mkdir(parents=True, exist_ok=True)
-    fotos_paths = []
-    
-    if fotos:
-        for i, foto in enumerate(fotos):
-            try:
-                nome_foto = f"{obra}_{data.strftime('%Y-%m-%d')}_foto{i+1}.jpg".replace(" ", "_").replace("/", "-")
-                caminho_foto = fotos_dir / nome_foto
-                with open(caminho_foto, "wb") as f:
-                    f.write(foto.getbuffer())
-                fotos_paths.append(str(caminho_foto))
-            except Exception as e:
-                st.warning(f"Erro ao salvar foto {i+1}: {str(e)}")
-                continue
-
-    # Geração do PDF
-    pdf_buffer = gerar_pdf(registro, fotos_paths if fotos_paths else None)
-    if pdf_buffer:
-        nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
-        
-        st.download_button(
-            label="📥 Baixar PDF",
-            data=pdf_buffer,
-            file_name=nome_pdf,
-            mime="application/pdf"
-        )
-        
-        st.markdown("""
-        <a href="whatsapp://send?text=Diário%20de%20Obra%20-%20Confira%20o%20relatório%20anexo" 
-           data-action="share/whatsapp/share"
-           style="
-              display: inline-block;
-              background-color: #25D366;
-              color: white;
-              padding: 10px 20px;
-              text-align: center;
-              text-decoration: none;
-              border-radius: 5px;
-              margin-top: 10px;
-              font-weight: bold;
-           ">
-           📤 Compartilhar via WhatsApp
-        </a>
-        """, unsafe_allow_html=True)
-        
-        st.info("""
-        **Instruções para compartilhar no WhatsApp:**
-        1. Baixe o PDF primeiro (botão acima)
-        2. Clique em "Compartilhar via WhatsApp"
-        3. No WhatsApp, toque no ícone de anexo (+) 
-        4. Selecione "Documento" e escolha o PDF baixado
-        5. Envie para o grupo desejado
-        
-        **Dica:** O arquivo é salvo na pasta de downloads do seu celular.
-        """)
-        
-        st.success("PDF gerado com sucesso!")
+if __name__ == "__main__":
+    main()
