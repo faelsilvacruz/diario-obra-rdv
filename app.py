@@ -13,6 +13,8 @@ from PIL import Image as PILImage
 import json
 import io
 import textwrap
+import tempfile
+import base64
 
 # Configuração da página
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
@@ -293,10 +295,44 @@ if st.button("💾 Salvar Registro"):
     pdf_buffer = gerar_pdf(registro, fotos_paths if fotos_paths else None)
     if pdf_buffer:
         nome_pdf = f"Diario_{obra.replace(' ', '_')}_{data.strftime('%Y-%m-%d')}.pdf"
+        
+        # Botão de download tradicional
         st.download_button(
             label="📥 Baixar PDF",
             data=pdf_buffer,
             file_name=nome_pdf,
             mime="application/pdf"
         )
+        
+        # Botão de compartilhamento via WhatsApp (para mobile)
+        st.markdown("""
+        <a href="whatsapp://send?text=Diário%20de%20Obra%20-%20Confira%20o%20relatório%20anexo" 
+           data-action="share/whatsapp/share"
+           style="
+              display: inline-block;
+              background-color: #25D366;
+              color: white;
+              padding: 10px 20px;
+              text-align: center;
+              text-decoration: none;
+              border-radius: 5px;
+              margin-top: 10px;
+              font-weight: bold;
+           ">
+           📤 Compartilhar via WhatsApp
+        </a>
+        """, unsafe_allow_html=True)
+        
+        # Instruções para o usuário
+        st.info("""
+        **Instruções para compartilhar no WhatsApp:**
+        1. Baixe o PDF primeiro (botão acima)
+        2. Clique em "Compartilhar via WhatsApp"
+        3. No WhatsApp, toque no ícone de anexo (+) 
+        4. Selecione "Documento" e escolha o PDF baixado
+        5. Envie para o grupo desejado
+        
+        **Dica:** O arquivo é salvo na pasta de downloads do seu celular.
+        """)
+        
         st.success("PDF gerado com sucesso!")
