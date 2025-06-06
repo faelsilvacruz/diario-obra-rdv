@@ -16,7 +16,7 @@ import textwrap
 import tempfile
 import base64
 
-# Configuração da página
+# ✅ Configuração da página (deve ser o primeiro comando Streamlit)
 st.set_page_config(page_title="Diário de Obra - RDV", layout="centered")
 
 # Leitura dos arquivos CSV
