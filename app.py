@@ -1,4 +1,5 @@
 # ✅ IMPORTS
+import yagmail
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -165,5 +166,37 @@ if st.button("💾 Salvar e Gerar Relatório"):
 
     # Upload automático
     drive_id = upload_para_drive(pdf, nome_pdf)
+    # ✅ Envio do e-mail de notificação
+    try:
+        yag = yagmail.SMTP("rdvengenhariaadm@gmail.com", "rxca mcau ulzc lfnr")
+        link_drive = f"https://drive.google.com/file/d/{drive_id}/view"
+
+        assunto = f"📋 Novo Diário de Obra - {obra} ({data.strftime('%d/%m/%Y')})"
+        corpo = f"""
+Olá, equipe RDV!
+
+O diário de obra foi preenchido com sucesso.
+
+📍 Obra: {obra}
+📅 Data: {data.strftime('%d/%m/%Y')}
+📝 Responsável: {nome_empresa}
+
+📎 Acesse o relatório em PDF:
+{link_drive}
+
+Atenciosamente,  
+Sistema Diário de Obra - RDV Engenharia
+"""
+
+        destinatarios = [
+            "comercial@rdvengenharia.com.br",
+            "administrativo@rdvengenharia.com.br"
+        ]
+
+        yag.send(to=destinatarios, subject=assunto, contents=corpo)
+        st.success("📨 E-mail enviado com sucesso para a diretoria.")
+    except Exception as e:
+        st.warning(f"⚠️ Falha ao enviar e-mail: {e}")
+
     st.success("✅ PDF salvo com sucesso no Google Drive!")
     st.markdown(f"[📂 Abrir no Google Drive](https://drive.google.com/file/d/{drive_id}/view)")
